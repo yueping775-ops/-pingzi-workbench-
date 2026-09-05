@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <!-- 永远实时拉取服务器最新文件：禁用一切缓存 -->
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>平子的工作台</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪷</text></svg>" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <!-- 强制关闭并注销任何 Service Worker，确保永远实时拉取服务器 -->
+  <script>
+    (function () {
+      try {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            (regs || []).forEach(function (r) { r.unregister(); });
+          });
+        }
+      } catch (e) {}
+      // 实时模式下强制每次加载脚本都去服务器取最新
+      var links = document.querySelectorAll('link[rel="stylesheet"]');
+      links.forEach(function (l) {
+        var href = l.getAttribute('href');
+        if (href && href.indexOf('?') === -1) { l.setAttribute('href', href + '?t=' + Date.now()); }
+      });
+    })();
+  </script>
+
+  <div id="app" v-cloak>
+    <!-- 顶栏：时间中枢 / 周次 / 同步状态 -->
+    <header class="topbar">
+      <button class="icon-btn only-mobile" @click="drawerOpen = !drawerOpen" aria-label="菜单">☰</button>
+      <div class="brand" @click="go('home')">
+        <span class="brand-logo">{{ settings.logoEmoji || '🪷' }}</span>
+        <span class="brand-name">{{ settings.logoText || '平子的工作台' }}</span>
+      </div>
+      <div class="clock-zone">
+        <div class="clock-time">{{ nowText }}</div>
+        <div class="clock-sub">
+          <span class="week-badge">第 {{ currentTeachingWeek }} 教学周</span>
+          <span class="date-badge">{{ todayText }}</span>
+          <span class="sync-dot" :title="syncText">{{ syncText }}</span>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" @click="openSearch" title="搜索">🔍</button>
+        <button class="icon-btn" @click="go('settings')" title="设置">⚙️</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <!-- 侧边导航 -->
+      <aside class="sidebar" :class="{ open: drawerOpen }">
+        <nav>
+          <div class="nav-group" v-for="g in navGroups" :key="g.title">
+            <div class="nav-group-title">{{ g.title }}</div>
+            <button v-for="item in g.items" :key="item.key"
+                    class="nav-item" :class="{ active: current === item.key }"
+                    @click="go(item.key)">
+              <span class="nav-ico">{{ item.ico }}</span>
+              <span class="nav-label">{{ item.label }}</span>
+              <span class="nav-flag" v-if="item.flag" :title="item.flag">{{ item.flag }}</span>
+            </button>
+          </div>
+        </nav>
+        <div class="sidebar-foot">
+          <div class="env-tag">{{ envMode }}</div>
+          <div class="version">v1.0 · 平子专用</div>
+        </div>
+      </aside>
+
+      <!-- 主内容 -->
+      <main class="content" @click="drawerOpen = false">
+        <component :is="currentComponent" :key="current"></component>
+      </main>
+    </div>
+
+    <!-- 隐私红线全局水印（仅在隐私板块启用） -->
+    <div class="privacy-watermark" v-if="activePrivacy">{{
+      (settings.privacyWatermark || '隐私数据 · 绝对保密') + ' · ' + (settings.privacyWatermark || '隐私数据 · 绝对保密')
+    }}</div>
+
+    <!-- 全局搜索浮层 -->
+    <div class="modal-mask" v-if="searchOpen" @click.self="searchOpen = false">
+      <div class="modal search-modal">
+        <div class="modal-head">
+          <h3>🔍 全局搜索</h3>
+          <button class="icon-btn" @click="searchOpen = false">✕</button>
+        </div>
+        <input class="input" v-model="searchKey" placeholder="搜索任务 / 课程 / 学生编号 / 档案…" autofocus />
+        <div class="search-result" v-if="searchKey">
+          <div v-for="r in searchResults" :key="r.key+r.id" class="search-row" @click="jumpTo(r)">
+            <span class="tag" :style="{background:r.color}">{{ r.module }}</span>
+            <span class="txt">{{ r.title }}</span>
+            <span class="sub">{{ r.sub }}</span>
+          </div>
+          <div v-if="!searchResults.length" class="empty">未找到匹配内容</div>
+        </div>
+        <div class="search-hint" v-else>输入关键词检索各板块内容（隐私区仅本地检索，不外传）。</div>
+      </div>
+    </div>
+
+    <!-- 轻提示 -->
+    <div class="toast" v-if="toastMsg">{{ toastMsg }}</div>
+  </div>
+
+  <script src="assets/vendor/vue.global.prod.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script src="assets/js/utils.js"></script>
+  <script src="assets/js/sections-home.js"></script>
+  <script src="assets/js/sections-teaching.js"></script>
+  <script src="assets/js/sections-privacy.js"></script>
+  <script src="assets/js/sections-work.js"></script>
+  <script src="assets/js/sections-inspiration.js"></script>
+  <script src="assets/js/settings.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
